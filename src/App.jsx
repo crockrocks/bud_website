@@ -6,6 +6,8 @@ import Introduction from './components/Introduction';
 import CharactersPage from './components/CharactersPage';
 import ChatInterface from './components/ChatInterface';
 import PersonalityQuestionnaire from './components/PersonalityQuestionnaire';
+import Login from './components/auth/login';
+import Signup from './components/auth/register';
 
 function App() {
   const [darkMode, setDarkMode] = useState(false);
@@ -32,6 +34,14 @@ function App() {
           <Route 
             path="/chat/:character" 
             element={<ChatInterface />} 
+          />
+          <Route
+            path = "/login"
+            element={<Login />}
+          />
+          <Route
+            path = "/signup"
+            element={<Signup />}
           />
         </Routes>
       </div>
