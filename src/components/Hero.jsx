@@ -1,4 +1,3 @@
-// src/components/Hero.jsx
 import { motion, useScroll, useTransform } from 'framer-motion';
 import { useEffect, useState } from 'react';
 

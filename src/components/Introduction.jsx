@@ -38,6 +38,7 @@ function Introduction() {
           >
             Key Features
           </motion.h2>
+          
 
           <div className="grid md:grid-cols-3 gap-6 max-w-6xl mx-auto">
             {/* Personal AI Companion Card */}

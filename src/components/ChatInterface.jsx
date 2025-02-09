@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Send, Mic, Image, Paperclip, MoreVertical } from 'lucide-react';
 import { useParams } from 'react-router-dom';
+import { useAuth } from '../contexts/authContext/authContext';
 
 const characterThemes = {
     bud: {
@@ -50,70 +51,70 @@ const characterThemes = {
 
 const ChatInterface = () => {
     const { character } = useParams();
-    const currentCharacter = character?.toLowerCase() || 'bud';
-    const theme = characterThemes[currentCharacter] || characterThemes.bud;
-    
-    const [messages, setMessages] = useState([
-        {
-            type: 'bot',
-            content: getInitialMessage(currentCharacter),
-            timestamp: new Date()
-        }
-    ]);
+    const { user } = useAuth();
+    const [messages, setMessages] = useState([]);
     const [inputMessage, setInputMessage] = useState('');
+    const [loading, setLoading] = useState(false);
     const messagesEndRef = useRef(null);
-    
-    function getInitialMessage(character) {
-        switch(character) {
-            case 'luffy':
-                return "Yo! I'm Luffy, and I'm gonna be King of the Pirates! What adventure should we start today? 🏴‍☠️";
-            case 'deadpool':
-                return "Hey there! *breaks fourth wall* Ready for some witty banter and questionable life advice? 🎭";
-            default:
-                return "Hi! I'm BUD. How can I help you today? 🌱";
-        }
-    }
-
+  
+    const currentCharacter = character ? character.split('-')[0].toLowerCase() : 'bud';
+    const theme = characterThemes[currentCharacter] || characterThemes.bud;
+  
     const scrollToBottom = () => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     };
-
+  
     useEffect(() => {
-        scrollToBottom();
+      scrollToBottom();
     }, [messages]);
-
-    const handleSendMessage = () => {
-        if (!inputMessage.trim()) return;
-
-        setMessages(prev => [...prev, {
-            type: 'user',
-            content: inputMessage,
-            timestamp: new Date()
-        }]);
-
-        setInputMessage('');
-
-        // Simulate bot response
-        setTimeout(() => {
-            const response = getCharacterResponse(currentCharacter);
-            setMessages(prev => [...prev, {
-                type: 'bot',
-                content: response,
-                timestamp: new Date()
-            }]);
-        }, 1000);
-    };
-
-    function getCharacterResponse(character) {
-        switch(character) {
-            case 'luffy':
-                return "Shishishi! That sounds like fun! Let's make it an adventure! 🏴‍☠️";
-            case 'deadpool':
-                return "Oh, that's what we're doing? *winks at camera* Challenge accepted! 🎭";
-            default:
-                return "I understand! I'll help you with that! 🌱";
+  
+    const handleSendMessage = async () => {
+      if (!inputMessage.trim() || loading) return;
+  
+      const newMessage = {
+        type: 'user',
+        content: inputMessage,
+        timestamp: new Date()
+      };
+  
+      setMessages(prev => [...prev, newMessage]);
+      setInputMessage('');
+      setLoading(true);
+  
+      try {
+        const response = await fetch('http://localhost:5000/api/chat', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${await user.getIdToken()}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            message: inputMessage,
+            character: currentCharacter
+          })
+        });
+  
+        if (!response.ok) {
+          throw new Error('Failed to send message');
         }
-    }
+  
+        const data = await response.json();
+        setMessages(prev => [...prev, {
+          type: 'bot',
+          content: data.response,
+          timestamp: new Date()
+        }]);
+      } catch (error) {
+        console.error('Chat error:', error);
+        setMessages(prev => [...prev, {
+          type: 'error',
+          content: 'Failed to send message. Please try again.',
+          timestamp: new Date()
+        }]);
+      } finally {
+        setLoading(false);
+      }
+    };
 
     return (
         <div className={`pt-16 h-screen bg-gradient-to-br ${theme.gradient}`}>

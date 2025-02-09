@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from "react";
-import { ArrowRight, ArrowLeft, Send, RefreshCw } from "lucide-react";
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../contexts/authContext/authContext";
 
 const GENDER_OPTIONS = ["Male", "Female", "Other"];
-const MAX_RETRIES = 2;
 
 const calculatePersonalityType = (answers) => {
   let scores = {
@@ -19,7 +19,7 @@ const calculatePersonalityType = (answers) => {
 
   answers.forEach((answer, index) => {
     const value = answer.value;
-
+    // Use specific question indexes for the four traits
     switch (index) {
       case 0:
       case 5:
@@ -52,10 +52,22 @@ const calculatePersonalityType = (answers) => {
   return {
     type,
     scores: {
-      extraversion: Math.round((scores.E / (scores.E + scores.I)) * 100),
-      intuition: Math.round((scores.N / (scores.N + scores.S)) * 100),
-      thinking: Math.round((scores.T / (scores.T + scores.F)) * 100),
-      judging: Math.round((scores.J / (scores.J + scores.P)) * 100),
+      extraversion:
+        scores.E + scores.I > 0
+          ? Math.round((scores.E / (scores.E + scores.I)) * 100)
+          : 50,
+      intuition:
+        scores.N + scores.S > 0
+          ? Math.round((scores.N / (scores.N + scores.S)) * 100)
+          : 50,
+      thinking:
+        scores.T + scores.F > 0
+          ? Math.round((scores.T / (scores.T + scores.F)) * 100)
+          : 50,
+      judging:
+        scores.J + scores.P > 0
+          ? Math.round((scores.J / (scores.J + scores.P)) * 100)
+          : 50,
     },
   };
 };
@@ -193,13 +205,11 @@ const FALLBACK_QUESTIONS = [
   },
 ];
 
-
 const LoadingScreen = () => (
   <div className="fixed inset-0 bg-green-50/80 dark:bg-gray-900/80 backdrop-blur-sm flex items-center justify-center z-50">
     <div className="text-center">
-      <div className="animate-spin">
-        <RefreshCw className="w-16 h-16 text-green-600 dark:text-green-400" />
-      </div>
+      {/* A simple spinner using Tailwind CSS */}
+      <div className="w-16 h-16 border-4 border-green-600 border-dashed rounded-full animate-spin mx-auto" />
       <p className="mt-4 text-green-700 dark:text-green-400 text-lg font-semibold">
         Processing your responses...
       </p>
@@ -207,40 +217,68 @@ const LoadingScreen = () => (
   </div>
 );
 
-const QuestionSet = ({ questions, answers, onAnswer, startIndex }) => {
+const QuestionCard = ({ question, answer, onAnswer }) => {
+  const positions = [-3, -2, -1, 0, 1, 2, 3];
+  
   return (
-    <div className="space-y-8">
-      {questions.map((question, idx) => (
-        <div
-          key={question.id}
-          className="bg-white/80 dark:bg-gray-800/80 backdrop-blur rounded-lg p-6 shadow-md"
-        >
-          <div className="mb-4">
-            <h3 className="text-lg font-semibold text-green-700 dark:text-green-400">
-              Question {startIndex + idx + 1}
-            </h3>
-            <p className="text-gray-600 dark:text-gray-300">{question.text}</p>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
-            {question.options.map((option) => (
-              <button
-                key={option.value}
-                onClick={() => onAnswer(question.id, option.value)}
-                className={`p-3 rounded-lg text-center transition-all ${
-                  answers[question.id]?.value === option.value
-                    ? "bg-green-600 text-white shadow-lg scale-105"
-                    : "bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600"
-                }`}
-              >
-                {option.text}
-              </button>
-            ))}
-          </div>
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="bg-white/80 dark:bg-gray-800/80 backdrop-blur rounded-lg p-8 shadow-lg"
+    >
+      <h3 className="text-xl text-gray-700 dark:text-gray-200 mb-8 text-center">
+        {question.text}
+      </h3>
+      
+      <div className="flex flex-col space-y-6">
+        <div className="flex justify-between text-sm font-medium">
+          <span className="text-green-600 dark:text-green-400">Agree</span>
+          <span className="text-green-600 dark:text-green-400">Disagree</span>
         </div>
-      ))}
-    </div>
+        
+        <div className="flex justify-between items-center relative">
+          <div className="absolute w-full h-0.5 bg-gray-200 dark:bg-gray-600 -z-10" />
+          
+          {positions.map((value) => {
+            const isSelected = answer?.value === value;
+            return (
+              <motion.button
+                key={value}
+                onClick={() => onAnswer(question.id, value)}
+                className="relative"
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                <div
+                  className={`w-8 h-8 rounded-full border-2 transition-all duration-200 ${
+                    isSelected
+                      ? 'border-green-500 bg-green-500'
+                      : 'border-gray-300 dark:border-gray-500 hover:border-green-400'
+                  }`}
+                />
+                {isSelected && (
+                  <motion.div
+                    layoutId={`selection-${question.id}`}
+                    className="absolute inset-0 bg-green-500 rounded-full"
+                    initial={false}
+                    transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                  />
+                )}
+              </motion.button>
+            );
+          })}
+        </div>
+        
+        <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
+          <span>Strongly Agree</span>
+          <span>Neutral</span>
+          <span>Strongly Disagree</span>
+        </div>
+      </div>
+    </motion.div>
   );
 };
+
 
 const ResultTraitCard = ({ trait }) => (
   <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur rounded-lg p-6 mb-6 shadow-md">
@@ -263,7 +301,9 @@ const ResultTraitCard = ({ trait }) => (
         style={{ width: `${trait.pct}%` }}
       />
     </div>
-    <p className="text-gray-600 dark:text-gray-400 text-sm">{trait.snippet}</p>
+    <p className="text-gray-600 dark:text-gray-400 text-sm">
+      {trait.snippet}
+    </p>
   </div>
 );
 
@@ -276,14 +316,13 @@ const PersonalityQuestionnaire = () => {
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const [gender, setGender] = useState(null);
-  const [retryCount, setRetryCount] = useState(0);
-
+  const { user } = useAuth();
   const navigate = useNavigate();
 
   const questionsPerPage = 5;
 
   useEffect(() => {
-    // Use fallback questions instead of fetching
+    // Use fallback questions instead of fetching from an API.
     setQuestions(FALLBACK_QUESTIONS);
     setLoading(false);
   }, []);
@@ -303,18 +342,33 @@ const PersonalityQuestionnaire = () => {
   const handleSubmit = async () => {
     setSubmitting(true);
     try {
-      // Convert answers object to array
-      const answersArray = Object.values(answers).sort(
-        (a, b) =>
-          questions.findIndex((q) => q.id === a.id) -
-          questions.findIndex((q) => q.id === b.id)
+      // Calculate personality type using sorted answers based on question order.
+      const personalityResult = calculatePersonalityType(
+        Object.values(answers).sort(
+          (a, b) =>
+            questions.findIndex((q) => q.id === a.id) -
+            questions.findIndex((q) => q.id === b.id)
+        )
       );
 
-      // Calculate personality type
-      const personalityResult = calculatePersonalityType(answersArray);
+      // Save the personality type to the backend API.
+      const response = await fetch("http://localhost:5000/api/personality", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${await user.getIdToken()}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          personalityType: personalityResult.type,
+        }),
+      });
 
-      // Generate result object
-      const result = {
+      if (!response.ok) {
+        throw new Error("Failed to save personality type");
+      }
+
+      // Build result object for display.
+      const resultData = {
         niceName: `${personalityResult.type} Personality`,
         fullCode: `${personalityResult.type}-A`,
         avatarSrcStatic: "/api/placeholder/100/100",
@@ -328,17 +382,15 @@ const PersonalityQuestionnaire = () => {
                 ? "Extraversion"
                 : "Introversion",
             pct: personalityResult.scores.extraversion,
-            label:
-              personalityResult.type[0] === "E"
-                ? "Energy Source"
-                : "Energy Source",
+            label: "Energy Source",
             snippet:
               personalityResult.type[0] === "E"
                 ? "You tend to be energized by social interaction and external stimulation."
                 : "You prefer quiet, solitary activities and internal reflection.",
           },
           {
-            trait: personalityResult.type[1] === "N" ? "Intuition" : "Sensing",
+            trait:
+              personalityResult.type[1] === "N" ? "Intuition" : "Sensing",
             pct: personalityResult.scores.intuition,
             label: "Information Processing",
             snippet:
@@ -347,7 +399,8 @@ const PersonalityQuestionnaire = () => {
                 : "You prefer concrete details and practical realities.",
           },
           {
-            trait: personalityResult.type[2] === "T" ? "Thinking" : "Feeling",
+            trait:
+              personalityResult.type[2] === "T" ? "Thinking" : "Feeling",
             pct: personalityResult.scores.thinking,
             label: "Decision Making",
             snippet:
@@ -356,7 +409,8 @@ const PersonalityQuestionnaire = () => {
                 : "You make decisions based on personal values and emotional impact.",
           },
           {
-            trait: personalityResult.type[3] === "J" ? "Judging" : "Perceiving",
+            trait:
+              personalityResult.type[3] === "J" ? "Judging" : "Perceiving",
             pct: personalityResult.scores.judging,
             label: "Lifestyle",
             snippet:
@@ -367,8 +421,7 @@ const PersonalityQuestionnaire = () => {
         ],
       };
 
-      setResult(result);
-      setRetryCount(0);
+      setResult(resultData);
     } catch (err) {
       console.error(err);
       setError("Failed to process results. Please try again.");
@@ -414,15 +467,14 @@ const PersonalityQuestionnaire = () => {
 
             <div className="space-y-6">
               {result.traits.map((trait, index) => (
-                <ResultTraitCard key={index} trait={trait} index={index} />
+                <ResultTraitCard key={index} trait={trait} />
               ))}
             </div>
-            <div className="justify-center">
+            <div className="flex justify-center">
               <button
                 onClick={() => navigate("/")}
-                className="flex items-center gap-2 px-6 py-3 rounded-lg bg-green-600 text-white hover:bg-green-700 transition-all"
+                className="px-6 py-3 rounded-lg bg-green-600 text-white hover:bg-green-700 transition-all"
               >
-                {/* <Home className="w-4 h-4" /> */}
                 Back to Home
               </button>
             </div>
@@ -458,78 +510,64 @@ const PersonalityQuestionnaire = () => {
     );
   }
 
-  
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-green-100 dark:from-gray-900 dark:to-gray-800 py-12">
-      {submitting && <LoadingScreen />}
-
-      <div className="container mx-auto px-4 max-w-4xl">
-        {error && (
-          <div className="mb-6 bg-red-50 dark:bg-red-900/20 border-l-4 border-red-400 p-4 rounded">
-            <p className="text-red-700 dark:text-red-200">{error}</p>
-          </div>
-        )}
-
-        <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur rounded-xl shadow-xl p-8">
-          <div className="mb-8">
-            <h2 className="text-3xl font-bold text-green-700 dark:text-green-400 mb-4">
-              Personality Assessment
-            </h2>
-            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-              <div
-                className="bg-green-600 h-2 rounded-full transition-all duration-300"
-                style={{ width: `${((currentPage + 1) / totalPages) * 100}%` }}
-              />
-            </div>
-            <p className="mt-2 text-gray-600 dark:text-gray-400 text-sm">
-              Page {currentPage + 1} of {totalPages}
-            </p>
-          </div>
-
-          <QuestionSet
-            questions={getCurrentQuestions()}
-            answers={answers}
-            onAnswer={handleAnswer}
-            startIndex={currentPage * questionsPerPage}
-          />
-
+      <div className="container mx-auto px-4 max-w-3xl">
+        <motion.div 
+          className="space-y-8"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+        >
+          {getCurrentQuestions().map((question) => (
+            <QuestionCard
+              key={question.id}
+              question={question}
+              answer={answers[question.id]}
+              onAnswer={handleAnswer}
+            />
+          ))}
+          
           <div className="flex justify-between mt-8">
-            <button
+            <motion.button
               onClick={() => setCurrentPage((prev) => Math.max(0, prev - 1))}
               disabled={currentPage === 0}
-              className="flex items-center gap-2 px-6 py-3 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="px-6 py-3 rounded-lg bg-gray-200 dark:bg-gray-700 
+                       hover:bg-gray-300 dark:hover:bg-gray-600 
+                       disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <ArrowLeft className="w-4 h-4" />
               Previous
-            </button>
-
-            {currentPage === totalPages - 1 ? (
-              <button
+            </motion.button>
+            
+            {currentPage === Math.ceil(questions.length / questionsPerPage) - 1 ? (
+              <motion.button
                 onClick={handleSubmit}
                 disabled={!isPageComplete()}
-                className="flex items-center gap-2 px-6 py-3 rounded-lg bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="px-6 py-3 rounded-lg bg-green-600 text-white 
+                         hover:bg-green-700 disabled:opacity-50 
+                         disabled:cursor-not-allowed"
               >
                 Complete
-                <Send className="w-4 h-4" />
-              </button>
+              </motion.button>
             ) : (
-              <button
-                onClick={() =>
-                  setCurrentPage((prev) => Math.min(totalPages - 1, prev + 1))
-                }
+              <motion.button
+                onClick={() => setCurrentPage((prev) => prev + 1)}
                 disabled={!isPageComplete()}
-                className="flex items-center gap-2 px-6 py-3 rounded-lg bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="px-6 py-3 rounded-lg bg-green-600 text-white 
+                         hover:bg-green-700 disabled:opacity-50 
+                         disabled:cursor-not-allowed"
               >
                 Next
-                <ArrowRight className="w-4 h-4" />
-              </button>
+              </motion.button>
             )}
           </div>
-        </div>
+        </motion.div>
       </div>
-
-      
     </div>
   );
 };
