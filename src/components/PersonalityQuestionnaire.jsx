@@ -352,7 +352,7 @@ const PersonalityQuestionnaire = () => {
       );
 
       // Save the personality type to the backend API.
-      const response = await fetch("http://localhost:5000/api/personality", {
+      const response = await fetch("https://budtest-cgg3a5g9d7cjasf7.canadacentral-01.azurewebsites.net/api/personality", {
         method: "POST",
         headers: {
           Authorization: `Bearer ${await user.getIdToken()}`,

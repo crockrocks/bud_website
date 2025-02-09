@@ -15,7 +15,7 @@ const PersonalityCheck = ({ user }) => {
 
         const token = await user.getIdToken();
 
-        const response = await fetch("http://localhost:5000/api/get_personality", {
+        const response = await fetch("https://budtest-cgg3a5g9d7cjasf7.canadacentral-01.azurewebsites.net/api/get_personality", {
           method: "GET",
           headers: {
             Authorization: `Bearer ${token}`,
